@@ -24,21 +24,46 @@
 
 ```mermaid
 graph TD
-    User([사용자 질의]) --> NLP[소비 패턴 추출 GPT-3.5]
-    NLP --> |카테고리 비율| Mindmap[Insights 마인드맵 UI]
-    NLP --> |상세 검색 프로필| Hybrid[Hybrid Retriever]
-    
-    subgraph Retrieval Pipeline
-        Hybrid --> BM25[BM25 Retriever]
-        Hybrid --> Chroma[Chroma DB]
-        BM25 --> Ensemble[Ensemble Retriever 0.4:0.6]
-        Chroma --> Ensemble
-        Ensemble --> Cohere[Cohere Rerank v3.5]
+    %% 스타일 정의 (모던, 플랫 디자인)
+    classDef userNode fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:#ffffff,rx:8px,ry:8px,font-weight:bold;
+    classDef aiNode fill:#8b5cf6,stroke:#7c3aed,stroke-width:2px,color:#ffffff,rx:8px,ry:8px,font-weight:bold;
+    classDef dbNode fill:#10b981,stroke:#059669,stroke-width:2px,color:#ffffff,rx:8px,ry:8px,font-weight:bold;
+    classDef uiNode fill:#f43f5e,stroke:#e11d48,stroke-width:2px,color:#ffffff,rx:8px,ry:8px,font-weight:bold;
+    classDef processNode fill:#f3f4f6,stroke:#d1d5db,stroke-width:2px,color:#1f2937,rx:8px,ry:8px;
+
+    User(["👤 사용자 질의 (Chat)"]):::userNode
+
+    subgraph Step1 ["1. AI 전처리 및 의도 추출"]
+        NLP["GPT-3.5 소비 패턴 분석기"]:::aiNode
     end
-    
-    Cohere --> |Top 3 카드| Sync[컨텍스트 동기화 및 필터링]
-    Sync --> LLM[답변 생성 GPT-3.5-turbo]
-    LLM --> UI[Streamlit UI 표출]
+
+    User --> NLP
+
+    NLP -->|"카테고리 비율 (%)"| Mindmap["📊 마인드맵 (Insights UI)"]:::uiNode
+    NLP -->|"가중 쿼리 (Weighted Query)"| Ensemble
+
+    subgraph Step2 ["2. 하이브리드 RAG 검색 엔진"]
+        Ensemble["Ensemble Retriever"]:::processNode
+        BM25["BM25 Retriever (키워드/0.4)"]:::dbNode
+        Chroma["Chroma Dense (의미/0.6)"]:::dbNode
+        Cohere["Cohere Rerank (Top 6)"]:::aiNode
+        
+        Ensemble --> BM25
+        Ensemble --> Chroma
+        BM25 --> Cohere
+        Chroma --> Cohere
+    end
+
+    subgraph Step3 ["3. 컨텍스트 정제 및 LLM 응답"]
+        Filter["중복 제거 및 Top 3 카드 추출"]:::processNode
+        LLM["GPT-3.5-turbo (추천 챗봇)"]:::aiNode
+    end
+
+    Cohere --> Filter
+    Filter --> LLM
+
+    LLM -->|"맞춤형 추천 답변"| ChatUI["💬 Streamlit 대화창 UI"]:::uiNode
+    Filter -->|"메타데이터 기반"| CardUI["💳 3-Column 카드 컴포넌트"]:::uiNode
 ```
 
 ---
